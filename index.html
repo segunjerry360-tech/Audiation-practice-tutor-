@@ -1,0 +1,153 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Audiation Trainer</title>
+<style>
+:root{--bg:#eef1f3;--fg:#13202c;--mut:#5d6b78;--card:#fff;--ln:#cfd7de;--ac:#a8741a;--pt:#0a7f94;--ok:#1b8a52;--bad:#c2412f;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1a27;--fg:#e8eef3;--mut:#8ea0b0;--card:#142638;--ln:#2a3f54;--ac:#e0b050;--pt:#5fc4d8;--ok:#5ccf93;--bad:#ef7d6b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d1a27;--fg:#e8eef3;--mut:#8ea0b0;--card:#142638;--ln:#2a3f54;--ac:#e0b050;--pt:#5fc4d8;--ok:#5ccf93;--bad:#ef7d6b;color-scheme:dark}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:480px;margin:0 auto;padding:18px 18px 40px}
+h1{font:600 26px Georgia,serif;margin:8px 0 4px}p{color:var(--mut);margin:4px 0 14px}
+.row{display:flex;gap:8px;margin:6px 0 16px}.row button{flex:1}
+button{font:inherit;padding:12px 8px;border:1px solid var(--ln);background:var(--card);color:var(--fg);border-radius:10px;cursor:pointer}
+button.on{border-color:var(--ac);box-shadow:inset 0 0 0 1px var(--ac)}
+button:focus-visible{outline:2px solid var(--pt);outline-offset:2px}
+.go{width:100%;background:var(--ac);color:var(--bg);border:0;font-weight:600;padding:16px;font-size:18px}
+.lb{font-size:14px;color:var(--mut);margin-top:4px}
+.top{display:flex;justify-content:space-between;color:var(--mut);font-size:14px}
+#ph{margin:28px 0 6px;text-align:center;color:var(--mut)}
+#big{font:600 44px/1.15 Georgia,serif;text-align:center;min-height:100px;margin:6px 0}
+#pr{text-align:center;min-height:44px}
+.m{position:relative;height:54px;margin:22px 0;border-top:1px solid var(--ln);border-bottom:1px solid var(--ln)}
+.m i{position:absolute;top:0;bottom:0;background:var(--pt);opacity:.15;left:calc(50% - var(--w))}
+.m b{position:absolute;left:50%;top:-6px;bottom:-6px;width:2px;background:var(--ac)}
+#nd{position:absolute;top:8px;bottom:8px;width:6px;border-radius:3px;background:var(--pt);left:50%;margin-left:-3px;opacity:0;transition:left .06s}
+#fb{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:64px}
+.c{padding:6px 10px;border:1px solid var(--ln);border-radius:8px;text-align:center;font-size:14px}
+.c.ok{border-color:var(--ok);color:var(--ok)}.c.no{border-color:var(--bad);color:var(--bad)}
+.c span{display:block;font:600 18px Georgia,serif}
+table{width:100%;border-collapse:collapse;margin:12px 0}td{padding:8px 4px;border-bottom:1px solid var(--ln)}td:last-child{text-align:right}
+.hid{display:none}
+</style></head><body><main>
+<section id="home"><h1>Audiation Trainer</h1><p>Hear it, hold it in your head, then sing it. Use headphones so the mic only hears you.</p>
+<div class="lb">Session length</div><div class="row" id="gm"><button data-v="10" class="on">10 min</button><button data-v="20">20 min</button><button data-v="30">30 min</button><button data-v="45">45 min</button></div>
+<div class="lb">Pitch tolerance</div><div class="row" id="gt"><button data-v="50">±50 ¢</button><button data-v="25" class="on">±25 ¢</button><button data-v="15">±15 ¢</button></div>
+<div class="lb">Your voice</div><div class="row" id="gv"><button data-v="47">Low</button><button data-v="52" class="on">Mid</button><button data-v="57">High</button></div>
+<div class="lb">Tempo (beats per minute)</div><div class="row" id="gb"><button data-v="50" class="on">50 slow</button><button data-v="70">70</button><button data-v="90">90</button><button data-v="110">110</button></div><div class="lb">Metronome click while you sing</div><div class="row" id="gc"><button data-v="1" class="on">On</button><button data-v="0">Off</button></div><button class="go" id="st">Start today’s session</button><p id="err" style="color:var(--bad)"></p>
+<div class="lb">Today’s plan</div><div id="plan"></div><div class="lb" style="margin-top:14px">Your progress</div><table id="lv"></table></section>
+<section id="ses" class="hid"><div class="top"><span id="mn"></span><span id="tm"></span></div><div id="ph"></div><div id="big"></div><div id="pr"></div>
+<div class="m"><i id="bd"></i><b></b><div id="nd"></div></div><div id="fb"></div><div class="row" style="margin-top:18px"><button id="pz">Pause</button><button id="sp">End session</button></div></section>
+<section id="end" class="hid"><h1>Session done</h1><table id="sm"></table><button class="go" id="bk">Back to start</button></section>
+</main>
+<script>
+const $=s=>document.querySelector(s),R=a=>a[Math.random()*a.length|0],sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const SYL='Do Di re mo mi fa fi so zi la to ti'.split(' ');
+const SC={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],mixolydian:[0,2,4,5,7,9,10],lydian:[0,2,4,6,7,9,11],phrygian:[0,1,3,5,7,8,10],'harmonic minor':[0,2,3,5,7,8,11],'melodic minor':[0,2,3,5,7,9,11]};
+const MODS=['melody','speed','scale','harmony','silent','drone','degree'];
+const NM={melody:'Melody to solfa',speed:'Speed ID',scale:'Scale from the heart',harmony:'Harmonic architecture',silent:'Silent continuation',drone:'Drone removal',degree:'Degree targeting'};
+const DN={3:'the minor 3rd',4:'the major 3rd',6:'the flat 5',7:'the 5th',12:'the octave'};
+let S={min:10,tol:25,base:52,bpm:50,clk:1,pause:false,ac:null,an:null,buf:null,stop:false,st:{}};
+try{S.st=JSON.parse(localStorage.getItem('aud1'))||{}}catch(e){}
+const save=()=>{try{localStorage.setItem('aud1',JSON.stringify(S.st))}catch(e){}};
+const DAY=()=>Math.floor((Date.now()-new Date().getTimezoneOffset()*6e4)/864e5);
+let TU={it:{},dg:{},first:null};
+try{TU=Object.assign(TU,JSON.parse(localStorage.getItem('aud2'))||{})}catch(e){}
+if(TU.first==null)TU.first=DAY();
+const saveT=()=>{try{localStorage.setItem('aud2',JSON.stringify(TU))}catch(e){}};
+Object.assign(SC,{pentatonic:[0,2,4,7,9],'minor pentatonic':[0,3,5,7,10],blues:[0,3,5,6,7,10],'whole tone':[0,2,4,6,8,10],'half-whole diminished':[0,1,3,4,6,7,9,10],altered:[0,1,3,4,6,8,10],chromatic:[0,1,2,3,4,5,6,7,8,9,10,11]});
+const DT={0:1,7:1,4:1,2:2,5:2,9:2,11:2,3:3,8:3,10:3,1:4,6:4},Mj=[0,4,7],Mn=[0,3,7];
+const IV={1:'a minor 2nd',2:'a major 2nd',3:'a minor 3rd',4:'a major 3rd',5:'a 4th',6:'the flat 5',7:'a 5th',8:'a minor 6th',9:'a major 6th',10:'a minor 7th',11:'a major 7th'};
+const CAT=[],add=(id,mod,tier,sp,nm)=>CAT.push({id,mod,tier,sp,nm});
+Object.keys(DT).map(Number).forEach(x=>{add('s'+x,'speed',DT[x],{x},'Fast '+SYL[x]);if(x)add('r'+x,'degree',DT[x],{x},'From Do: '+SYL[x])});
+add('r12','degree',1,{x:12},'From Do: octave');
+[[3,2],[4,2],[7,2],[5,3],[2,3],[6,4],[9,4],[10,4],[8,4],[11,4],[1,4]].forEach(([i,t])=>add('a'+i,'degree',t,{iv:i},'Above a note: '+IV[i]));
+Object.entries({major:1,minor:1,pentatonic:1,'minor pentatonic':1,dorian:2,mixolydian:2,lydian:2,blues:2,phrygian:3,'harmonic minor':3,'melodic minor':3,'whole tone':4,'half-whole diminished':4,altered:4,chromatic:4}).forEach(([n,t])=>{add('c'+n+'u','scale',t,{n,up:1},n+' scale up');add('c'+n+'d','scale',t+1,{n,up:0},n+' scale down')});
+[['I–IV–V–I',1,[[0,Mj],[5,Mj],[7,Mj],[0,Mj]]],['I–V–vi–IV',1,[[0,Mj],[7,Mj],[9,Mn],[5,Mj]]],['I–vi–IV–V',1,[[0,Mj],[9,Mn],[5,Mj],[7,Mj]]],['ii–V–I',2,[[2,Mn],[7,Mj],[0,Mj]]],['I–IV–I–V',2,[[0,Mj],[5,Mj],[0,Mj],[7,Mj]]],['vi–IV–I–V',2,[[9,Mn],[5,Mj],[0,Mj],[7,Mj]]],['i–iv–V–i',3,[[9,Mn],[2,Mn],[4,Mj],[9,Mn]]],['ii–V–I–vi',3,[[2,Mn],[7,Mj],[0,Mj],[9,Mn]]],['I–vi–ii–V–I',3,[[0,Mj],[9,Mn],[2,Mn],[7,Mj],[0,Mj]]],['I–VI–ii–V',4,[[0,Mj],[9,Mj],[2,Mn],[7,Mj]]],['iii–vi–ii–V–I',4,[[4,Mn],[9,Mn],[2,Mn],[7,Mj],[0,Mj]]],['I–bVII–IV–I',4,[[0,Mj],[10,Mj],[5,Mj],[0,Mj]]],['I–bVI–bVII–I',5,[[0,Mj],[8,Mj],[10,Mj],[0,Mj]]],['ii–bII–I',5,[[2,Mn],[1,Mj],[0,Mj]]]].forEach(([n,t,ch],i)=>add('p'+i,'harmony',t,{ch},n));
+[['major up',1,[0,2,4,5,7,9,11,12]],['major down',1,[12,11,9,7,5,4,2,0]],['thirds',2,[0,4,2,5,4,7,5,9]],['minor up',2,[0,2,3,5,7,8,10,12]],['triad arpeggio',2,[0,4,7,12,7,4,0,4]],['dorian up',3,[0,2,3,5,7,9,10,12]],['fourths',3,[0,5,2,7,4,9,5,10]],['skips',4,[0,7,2,9,4,11,5,12]],['chromatic',4,[0,1,2,3,4,5,6,7]],['whole tone run',4,[0,2,4,6,8,10,12,10]],['flat 5 outline',5,[0,6,7,6,5,4,2,0]]].forEach(([n,t,p],i)=>add('t'+i,'silent',t,{p},n));
+[['do-so-do',1,[0,7,0]],['do-so-do-mi-do',1,[0,7,0,4,0]],['do-fa-do-so-do',2,[0,5,0,7,0]],['do-mi-so-mi-do-la-do',2,[0,4,7,4,0,9,0]],['la-mi-la-do-la',3,[9,4,9,0,9]],['do-di-do-ti-do',4,[0,1,0,11,0]],['do-fi-do-to-do-mo-do',4,[0,6,0,10,0,3,0]]].forEach(([n,t,q],i)=>add('d'+i,'drone',t,{q},n));
+[1,2,3,4].forEach(p=>[3,4,5,6].forEach(n=>add('l'+p+n,'melody',p+(n>4?1:0),{p,n},'Phrases pool '+p+', '+n+' notes')));
+const avgm=(m,u)=>{const a=CAT.filter(c=>c.mod==m&&c.tier==u&&TU.it[c.id]);return a.length?a.reduce((s,c)=>s+TU.it[c.id].m,0)/a.length:0};
+const ul=m=>{let u=1;while(u<5){const a=CAT.filter(c=>c.mod==m&&c.tier==u);if(!a.length||a.filter(c=>{const s=TU.it[c.id];return s&&s.n>=2&&s.m>=.75}).length<.7*a.length)break;u++}return u};
+function wt(c,td){const s=TU.it[c.id],m=s?s.m:.5,od=s?Math.max(0,td-s.due):0;let w=.2+od*.6+(1-m)*1.2+Math.exp(-(((m-.7)/.2)**2));
+if(s&&s.due>td&&m>=.6)w*=.35;if(!s)w=.9;const x=c.sp.x!=null?c.sp.x%12:null,g=x!=null&&TU.dg[x];if(g&&g[0]>=5)w*=1+(1-g[1]/g[0]);return w/(1+((S.ss||{})[c.id]||0)*1.5)}
+function upd(c,sc,td,ok){const s=TU.it[c.id]||(TU.it[c.id]={n:0,m:sc,iv:1,due:td});s.m=s.n?s.m*.7+sc*.3:sc;s.n++;if(ok)s.ok=1;s.iv=sc>=.8?Math.min(s.ok?28:7,Math.max(2,Math.round(s.iv*2.2))):sc<.5?1:Math.max(1,Math.round(s.iv*1.2));s.due=td+s.iv;s.last=td}
+function showPlan(){const td=DAY(),dd=td-TU.first,cs=td-dd%28,un=CAT.filter(c=>c.tier<=ul(c.mod)),seen=un.filter(c=>TU.it[c.id]&&TU.it[c.id].last>=cs).length,due=un.filter(c=>TU.it[c.id]&&TU.it[c.id].due<=td).length,nw=un.filter(c=>!TU.it[c.id]).length;
+const f=un.map(c=>[wt(c,td),c]).sort((a,b)=>b[0]-a[0]).slice(0,3).map(x=>x[1].nm);
+$('#plan').innerHTML=`<p>Cycle ${Math.floor(dd/28)+1}, day ${dd%28+1} of 28. Covered ${seen} of ${un.length} unlocked items this cycle.<br>Due for review: ${due}. Not yet tried: ${nw}.<br>Repetition block likely on: ${f.join(', ')}</p>`;
+$('#lv').innerHTML=MODS.map(m=>{const a=CAT.filter(c=>c.mod==m&&TU.it[c.id]);return `<tr><td>${NM[m]}</td><td>Tier ${ul(m)} · ${a.length?Math.round(100*a.reduce((s,c)=>s+TU.it[c.id].m,0)/a.length)+'%':'new'}</td></tr>`}).join('')}
+showPlan();
+for(const g of ['gm','gt','gv','gb','gc'])$('#'+g).onclick=e=>{const b=e.target.closest('button');if(!b)return;[...$('#'+g).children].forEach(x=>x.classList.remove('on'));b.classList.add('on');S[{gm:'min',gt:'tol',gv:'base',gb:'bpm',gc:'clk'}[g]]=+b.dataset.v};
+const m2f=m=>440*2**((m-69)/12);
+function click(a){const o=S.ac.createOscillator(),g=S.ac.createGain(),t=S.ac.currentTime;o.frequency.value=a?1500:1000;g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+.05);o.connect(g).connect(S.ac.destination);o.start(t);o.stop(t+.06)}
+function tone(m,t,d,v=.22,ty='triangle'){const o=S.ac.createOscillator(),g=S.ac.createGain();o.type=ty;o.frequency.value=m2f(m);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.03);g.gain.setValueAtTime(v,t+d-.08);g.gain.linearRampToValueAtTime(0,t+d);o.connect(g).connect(S.ac.destination);o.start(t);o.stop(t+d+.05);return g}
+function pitch(){S.an.getFloatTimeDomainData(S.buf);const b=S.buf,W=1024,sr=S.ac.sampleRate;let e=0;for(let i=0;i<W;i++)e+=b[i]*b[i];if(Math.sqrt(e/W)<.012)return null;
+const mn=Math.floor(sr/900),mx=Math.min(Math.floor(sr/75),b.length-W-2),n=[];
+for(let t=mn-1;t<=mx+1;t++){let a=0,d=0;for(let i=0;i<W;i++){a+=b[i]*b[i+t];d+=b[i]*b[i]+b[i+t]*b[i+t]}n[t]=2*a/d}
+let t=mn;while(t<mx&&n[t]>0)t++;const pk=[];let top=0;
+for(;t<mx;t++)if(n[t]>n[t-1]&&n[t]>=n[t+1]&&n[t]>.5){pk.push(t);top=Math.max(top,n[t])}
+if(top<.6)return null;const p=pk.find(x=>n[x]>=.9*top),a=n[p-1],c=n[p+1],q=n[p],sh=.5*(a-c)/(a-2*q+c||1);
+return 69+12*Math.log2(sr/(p+(isFinite(sh)?sh:0))/440)}
+const fold=c=>((c%1200)+1800)%1200-600;
+function listen(tg,tn,onlock){return new Promise(res=>{const out=[],h=[];let armed=true,last=null,unv=0,t0=performance.now(),lt=t0;
+const iv=setInterval(()=>{const now=performance.now();if(S.stop){clearInterval(iv);return res(out)}const p=pitch();
+if(p==null){unv++;h.length=0;if(unv>3)armed=true;$('#nd').style.opacity=0}else{unv=0;h.push(p);if(h.length>9)h.shift();
+const k=Math.min(out.length,tg.length-1),er=Math.max(-100,Math.min(100,fold((p-(tn+tg[k]))*100)));$('#nd').style.opacity=1;$('#nd').style.left=(50+er/2.2)+'%';
+if(armed&&h.length>=8){const s=[...h].sort((a,b)=>a-b);if(s[8]-s[0]<.6){out.push({m:s[4],rt:now-t0});armed=false;last=s[4];h.length=0;lt=now;t0=now;onlock&&onlock(out.length)}}
+else if(!armed&&Math.abs(p-last)>.7){armed=true;h.length=0}}
+if(out.length>=tg.length||now-lt>7000){clearInterval(iv);res(out)}},30)})}
+function make(c,tn){const K=100/S.bpm,T0=S.ac.currentTime+.1,N=(o,t,d=.5,v)=>tone(tn+o,T0+t*K,d*K,v),ph=(a,t0,g)=>a.forEach((o,i)=>N(o,t0+i*g,g-.05)),sp=c.sp;let d={};
+if(c.mod=='melody'){const pool=Object.keys(DT).map(Number).filter(x=>DT[x]<=sp.p),tg=Array.from({length:sp.n},()=>R(pool));N(0,0,.7);ph(tg,1,.6);d={ms:1000+sp.n*600,tg,pr:'Sing the phrase in solfa'}}
+else if(c.mod=='speed'){N(0,0,.8);d={ms:900,tg:[sp.x],big:SYL[sp.x],pr:'Sing it fast'}}
+else if(c.mod=='scale'){const s=SC[sp.n];N(0,0,.8);d={ms:900,tg:sp.up?[...s,12]:[12,...[...s].reverse()],pr:'Sing the '+sp.n+' scale '+(sp.up?'up':'down')}}
+else if(c.mod=='harmony'){sp.ch.forEach(([r,q],i)=>q.forEach(x=>N(r+x-12,i*1.1,1,.1)));d={ms:sp.ch.length*1100,tg:sp.ch.map(x=>x[0]),pr:'Sing the bass line (roots)'}}
+else if(c.mod=='silent'){ph(sp.p.slice(0,4),0,.6);d={ms:2600,tg:sp.p.slice(4),pr:'The sound stops. Keep going in time, 4 more notes'}}
+else if(c.mod=='drone'){d={ms:3000,tg:sp.q,pr:'Sing Do. The drone fades after your first note',drone:tone(tn,T0,40,.12,'sine')}}
+else if(sp.x!=null){N(0,0,.9);d={ms:1000,tg:[sp.x],pr:'This is Do. Sing '+(sp.x==12?'Do an octave up':SYL[sp.x])}}
+else{const p=R(SC.major.slice(1));N(0,0,.7);N(p,.9,.9);d={ms:1900,tg:[p+sp.iv],pr:'This is '+SYL[p]+'. Sing '+IV[sp.iv]+' above it'}}
+return d}
+function pick(last,k){const td=DAY(),sg=S.sn<=k*.2;let pool=[];
+CAT.forEach(c=>{if(c.mod==last)return;const u=ul(c.mod);if(c.tier<=u)pool.push([wt(c,td),c]);else if(c.tier==u+1&&sg&&avgm(c.mod,u)>=.6)pool.push([.5/(1+(S.ss[c.id]||0)*1.5),c])});
+if(k<2){const w=pool.filter(x=>TU.it[x[1].id]&&TU.it[x[1].id].m>=.8);if(w.length)pool=w}
+let r=Math.random()*pool.reduce((a,x)=>a+x[0],0),ch=pool[0][1];for(const x of pool){r-=x[0];if(r<=0){ch=x[1];break}}
+S.ss[ch.id]=(S.ss[ch.id]||0)+1;if(ch.tier>ul(ch.mod))S.sn++;return ch}
+async function rep(c,fast,hdr){const tn=S.base+Math.floor(Math.random()*6);
+$('#mn').textContent=NM[c.mod]+' · tier '+c.tier+(hdr?' · '+hdr:'');$('#big').textContent='';$('#pr').textContent='';$('#fb').innerHTML='';$('#nd').style.opacity=0;$('#ph').textContent='Listen';
+const d=make(c,tn),B=60000/S.bpm,n0=fast?2:4;await sleep(d.ms*100/S.bpm+(fast?250:500));if(S.stop)return null;
+$('#ph').textContent='Get ready. Count in';$('#pr').textContent=d.pr;for(let q=n0;q>0&&!S.stop;q--){click(q==n0);$('#big').textContent=q;await sleep(B)}if(S.stop)return null;
+$('#ph').textContent='Sing now';$('#big').textContent=d.big||'♪';click(1);const ck=S.clk?setInterval(()=>click(0),B):0;
+const o=await listen(d.tg,tn,n=>{if(n==1&&d.drone){d.drone.gain.cancelScheduledValues(S.ac.currentTime);d.drone.gain.setValueAtTime(d.drone.gain.value,S.ac.currentTime);d.drone.gain.linearRampToValueAtTime(0,S.ac.currentTime+1.5)}});
+clearInterval(ck);if(d.drone){d.drone.gain.cancelScheduledValues(S.ac.currentTime);d.drone.gain.linearRampToValueAtTime(0,S.ac.currentTime+.3)}
+if(S.stop)return null;let hit=0;$('#ph').textContent='Result';
+$('#fb').innerHTML=d.tg.map((t,i)=>{const s=o[i],e=s?Math.round(fold((s.m-(tn+t))*100)):null,ok=s&&Math.abs(e)<=S.tol,p=((t%12)+12)%12,g=TU.dg[p]||(TU.dg[p]=[0,0]);g[0]++;if(ok){hit++;g[1]++}
+return `<div class="c ${ok?'ok':'no'}"><span>${SYL[p]}</span>${s?(e>0?'+':'')+e+' ¢':'missed'}${c.mod=='speed'&&s?' · '+(s.rt/1000).toFixed(1)+' s':''}</div>`}).join('');
+const sc=hit/d.tg.length;(S.log[c.mod]=S.log[c.mod]||[]).push(sc);return sc}
+async function run(){S.stop=false;S.pause=false;S.log={};S.ss={};S.sn=0;S.bd=[];S.bs=[];S.rv=0;S.u0=Object.fromEntries(MODS.map(m=>[m,ul(m)]));$('#pz').textContent='Pause';
+const t0=Date.now();let end=t0+S.min*6e4,bEnd=t0+S.min*3e4,last=null,k=0;
+const tk=setInterval(()=>{const r=Math.max(0,end-Date.now());$('#tm').textContent=Math.floor(r/60000)+':'+String(Math.floor(r/1000)%60).padStart(2,'0')},500);
+const pz=async()=>{while(S.pause&&!S.stop){await sleep(200);end+=200;bEnd+=200}},
+nap=ms=>Promise.race([sleep(ms),new Promise(r=>S.nx=r)]),
+fin=async(c,sc)=>{upd(c,sc,DAY());saveT();const z=TU.it[c.id];$('#mn').textContent=NM[c.mod]+' · '+c.nm;$('#pr').textContent='Mastery '+Math.round(z.m*100)+'%. Next review in '+z.iv+' day(s). Tap results to continue';await nap(6000)},
+nextFocus=()=>{const td=DAY();let b=null,bw=-1;CAT.forEach(c=>{if(c.tier>ul(c.mod)||S.bd.includes(c))return;const w=wt(c,td)*(1+Math.random()*.3);if(w>bw){bw=w;b=c}});return b};
+await sleep(300);
+for(;k<2&&Date.now()<end&&!S.stop;k++){await pz();const c=pick(last,k);last=c.mod;const sc=await rep(c,0);if(sc==null)break;await fin(c,sc)}
+while(Date.now()<bEnd&&!S.stop){const c=nextFocus();if(!c)break;S.bd.push(c);
+const tgt=(c.mod=='speed'||c.mod=='degree'||(c.mod=='melody'&&c.sp.n<5))?10:5;let reps=0,st=0,ex=-1,cl=false;const h=[];
+while(!S.stop&&Date.now()<bEnd&&reps<40){await pz();const sc=await rep(c,1,'rep '+(reps+1)+' · streak '+st+'/'+tgt);if(sc==null)break;reps++;const ok=sc>=.85;h.push(ok);st=ok?st+1:0;
+$('#mn').textContent=NM[c.mod]+' · '+c.nm+' · rep '+reps;$('#pr').textContent=(ok?'Clean':'Missed')+'. Streak '+st+'/'+tgt+(cl?' · overlearning':'');await nap(1400);
+if(!cl&&st>=tgt){cl=true;ex=Math.min(15,Math.ceil(reps/2))}else if(cl&&--ex<=0)break}
+if(reps){const l=h.slice(-10),acc=l.filter(Boolean).length/l.length;upd(c,cl?Math.max(acc,.85):Math.min(acc,.7),DAY(),cl);saveT();S.bs.push([c.nm,reps,cl])}}
+while(Date.now()<end&&!S.stop){await pz();let c;if(S.bd.length&&end-Date.now()<75000&&S.rv<S.bd.length)c=S.bd[S.rv++];else c=pick(last,k++);last=c.mod;const sc=await rep(c,0);if(sc==null)break;await fin(c,sc)}
+clearInterval(tk);if(S.mic)S.mic.getTracks().forEach(t=>t.stop());finish()}
+function finish(){$('#ses').classList.add('hid');$('#end').classList.remove('hid');const td=DAY();
+const rows=MODS.filter(m=>S.log[m]).map(m=>{const a=S.log[m];return `<tr><td>${NM[m]}</td><td>${Math.round(100*a.reduce((x,y)=>x+y)/a.length)}% over ${a.length}</td></tr>`}),
+up=MODS.filter(m=>ul(m)>S.u0[m]).map(m=>NM[m]+' → tier '+ul(m)),
+wk=Object.entries(TU.dg).filter(([p,g])=>g[0]>=4).sort((a,b)=>a[1][1]/a[1][0]-b[1][1]/b[1][0]).slice(0,3).map(([p,g])=>SYL[p]+' '+Math.round(100*g[1]/g[0])+'%'),
+nx=CAT.filter(c=>TU.it[c.id]&&TU.it[c.id].due<=td+1).length;
+$('#sm').innerHTML=((S.bs||[]).map(b=>`<tr><td>Block: ${b[0]}</td><td>${b[1]} reps${b[2]?' ✓':''}</td></tr>`).join('')+rows.join('')||'<tr><td>No drills completed.</td></tr>')+(up.length?`<tr><td>Unlocked</td><td>${up.join(', ')}</td></tr>`:'')+(wk.length?`<tr><td>Weakest notes</td><td>${wk.join(', ')}</td></tr>`:'')+`<tr><td>Due tomorrow</td><td>${nx} items</td></tr>`;showPlan()}
+$('#st').onclick=async()=>{$('#err').textContent='';try{S.ac=new(window.AudioContext||window.webkitAudioContext)();await S.ac.resume();
+S.mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}}).catch(()=>navigator.mediaDevices.getUserMedia({audio:true}));
+const src=S.ac.createMediaStreamSource(S.mic);S.an=S.ac.createAnalyser();S.an.fftSize=2048;S.buf=new Float32Array(2048);src.connect(S.an)}
+catch(e){const n=(e&&e.name)||'error';$('#err').textContent=(n=='NotAllowedError'||n=='SecurityError'?'The browser is refusing the mic for this page ('+n+'). If this page is open inside the Claude app or a preview, open its link in Chrome or Safari as its own tab and try again. ':n=='NotFoundError'?'No microphone was found. ':'Something went wrong ('+n+'): '+((e&&e.message)||'')+'. ')+'Fix that, then tap Start again.';return}
+$('#bd').style.setProperty('--w',(S.tol/2.2)+'%');$('#bd').style.width=(S.tol/1.1)+'%';
+$('#home').classList.add('hid');$('#ses').classList.remove('hid');run()};
+$('#sp').onclick=()=>{S.stop=true;S.nx&&S.nx()};$('#pz').onclick=()=>{S.pause=!S.pause;$('#pz').textContent=S.pause?'Resume':'Pause'};$('#fb').onclick=()=>{S.nx&&S.nx()};
+$('#bk').onclick=()=>{$('#end').classList.add('hid');$('#home').classList.remove('hid')};
+</script></body></html>
