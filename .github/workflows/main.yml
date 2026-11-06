@@ -1,0 +1,51 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Wrap the HTML in an Android project
+        run: |
+          mkdir www
+          cp index.html www/index.html
+          npm init -y
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          npx cap init "Audiation Trainer" com.kapitol.audiation --web-dir www
+          npx cap add android
+
+      - name: Allow the microphone
+        run: |
+          sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>\n    <application#' android/app/src/main/AndroidManifest.xml
+
+      - name: Sync and build
+        run: |
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Save the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: audiation-trainer-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          
